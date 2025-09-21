@@ -1,0 +1,21 @@
+# Basic configuration for DevSecOps framework
+scanner:
+  enabled_tools:
+    - checkov
+    - tfsec
+    - terrascan
+  timeout_seconds: 300
+  parallel_jobs: 2
+
+vault:
+  address: "http://localhost:8200"
+  token: "dev-token"
+
+database:
+  host: "localhost"
+  port: 5432
+  database: "devsecops"
+  
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

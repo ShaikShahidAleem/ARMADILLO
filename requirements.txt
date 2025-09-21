@@ -1,0 +1,15 @@
+checkov==3.0.0
+requests==2.31.0
+pyyaml==6.0.1
+asyncio
+aiohttp
+numpy
+pandas
+matplotlib
+cryptography
+hvac
+flask
+prometheus-client
+plotly
+psutil
+memory-profiler
