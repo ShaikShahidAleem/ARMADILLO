@@ -39,7 +39,7 @@ def check_external_tools():
     all_ok = True
     for tool_name, command in tools.items():
         try:
-            result = subprocess.run(command, capture_output=True, text=True)
+            result = subprocess.run(command, capture_output=True, text=True, shell=True)
             if result.returncode == 0:
                 print(f"  ✅ {tool_name} - OK")
             else:

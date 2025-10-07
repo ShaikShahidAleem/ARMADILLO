@@ -12,10 +12,9 @@ class SimpleSecurityScanner:
     def __init__(self, project_path: str):
         self.project_path = project_path
         self.results = {}
-    
     def run_checkov_scan(self) -> Dict:
         """Run Checkov security scan"""
-        print("🔍 Running Checkov scan...")
+        print("Running Checkov scan...")
         
         try:
             cmd = [
@@ -26,11 +25,11 @@ class SimpleSecurityScanner:
                 '--quiet'
             ]
             
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
             
-            if result.returncode == 0:
-                # Checkov returns 0 even with findings, check stderr for actual errors
-                if result.stdout:
+            # Checkov returns exit code 1 when it finds issues, so check stdout first
+            if result.stdout:
+                try:
                     data = json.loads(result.stdout)
                     return {
                         'tool': 'checkov',
@@ -38,11 +37,18 @@ class SimpleSecurityScanner:
                         'findings': data.get('results', {}).get('failed_checks', []),
                         'passed_checks': data.get('results', {}).get('passed_checks', [])
                     }
+                except json.JSONDecodeError as e:
+                    return {
+                        'tool': 'checkov',
+                        'status': 'error',
+                        'error': f'Failed to parse JSON output: {str(e)}',
+                        'findings': []
+                    }
             
             return {
                 'tool': 'checkov',
                 'status': 'error',
-                'error': result.stderr,
+                'error': result.stderr if result.stderr else 'No output from checkov',
                 'findings': []
             }
             
@@ -56,7 +62,7 @@ class SimpleSecurityScanner:
     
     def run_tfsec_scan(self) -> Dict:
         """Run tfsec security scan"""
-        print("🔍 Running tfsec scan...")
+        print("Running tfsec scan...")
         
         try:
             cmd = [
@@ -66,7 +72,7 @@ class SimpleSecurityScanner:
                 '--soft-fail'
             ]
             
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
             
             if result.stdout:
                 try:
