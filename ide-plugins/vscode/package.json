@@ -1,0 +1,45 @@
+{
+  "name": "armadillo-devsecops",
+  "displayName": "Armadillo DevSecOps",
+  "description": "Real-time security scanning for cloud infrastructure code",
+  "version": "0.1.0",
+  "publisher": "armadillo",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:terraform",
+    "onLanguage:yaml"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "devsecops.scanFile",
+        "title": "DevSecOps: Scan Current File"
+      },
+      {
+        "command": "devsecops.scanWorkspace",
+        "title": "DevSecOps: Scan Workspace"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^18.x",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^5.x",
+    "@typescript-eslint/parser": "^5.x",
+    "eslint": "^8.x",
+    "typescript": "^5.0.0"
+  }
+}

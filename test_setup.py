@@ -32,6 +32,8 @@ def check_external_tools():
         'terraform': ['terraform', '--version'],
         'checkov': ['checkov', '--version'],
         'tfsec': ['tfsec', '--version'],
+        'trivy': ['trivy', '--version'],
+        'opa': ['opa', 'version'],
         'git': ['git', '--version']
     }
     

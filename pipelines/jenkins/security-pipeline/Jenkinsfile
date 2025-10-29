@@ -1,0 +1,125 @@
+// pipelines/jenkins/security-pipeline/Jenkinsfile
+pipeline {
+    agent any
+
+    environment {
+        VAULT_ADDR = 'https://vault.company.com'
+        VAULT_TOKEN = credentials('vault-token')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh 'git clean -fdx'
+            }
+        }
+
+        stage('Infrastructure Security Scan') {
+            parallel {
+                stage('Checkov Scan') {
+                    steps {
+                        sh '''
+                            checkov -d . \
+                                --framework terraform \
+                                --output junitxml \
+                                --output-file-path reports/checkov-report.xml \
+                                --soft-fail
+                        '''
+                        publishTestResults testResultsPattern: 'reports/checkov-report.xml'
+                    }
+                }
+
+                stage('tfsec Scan') {
+                    steps {
+                        sh '''
+                            tfsec . \
+                                --format junit \
+                                --out reports/tfsec-report.xml \
+                                --soft-fail
+                        '''
+                        publishTestResults testResultsPattern: 'reports/tfsec-report.xml'
+                    }
+                }
+
+                stage('Terrascan Scan') {
+                    steps {
+                        sh '''
+                            terrascan scan -t terraform \
+                                --output junit-xml \
+                                --out-file reports/terrascan-report.xml \
+                                --non-recursive
+                        '''
+                        publishTestResults testResultsPattern: 'reports/terrascan-report.xml'
+                    }
+                }
+
+                stage('Custom Rules') {
+                    steps {
+                        sh '''
+                            python3 security/scanners/custom_scanner.py \
+                                --path . \
+                                --output reports/custom-scan.json
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Consolidate Security Results') {
+            steps {
+                script {
+                    sh '''
+                        python3 security/scanners/orchestrator.py \
+                            --reports-dir reports/ \
+                            --output consolidated-security-report.json \
+                            --threshold medium
+                    '''
+
+                    // Parse results and fail if critical issues found
+                    def securityReport = readJSON file: 'consolidated-security-report.json'
+                    def criticalIssues = securityReport.findings.findAll { it.severity == 'critical' }
+
+                    if (criticalIssues.size() > 0) {
+                        currentBuild.result = 'FAILURE'
+                        error("Critical security issues found: ${criticalIssues.size()}")
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            when {
+                not { equals expected: 'FAILURE', actual: currentBuild.result }
+            }
+            steps {
+                sh '''
+                    terraform init -backend-config="key=devsecops/${BRANCH_NAME}/terraform.tfstate"
+                    terraform plan -out=tfplan -var-file="environments/${ENVIRONMENT}.tfvars"
+                    terraform show -json tfplan > tfplan.json
+                '''
+
+                // Additional security scan on the plan
+                sh '''
+                    python3 security/scanners/plan_analyzer.py \
+                        --plan tfplan.json \
+                        --output plan-security-analysis.json
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'reports/**/*', fingerprint: true
+            publishHTML([
+                allowMissing: false,
+                alwaysLinkToLastBuild: false,
+                keepAll: true,
+                reportDir: 'reports',
+                reportFiles: 'security-dashboard.html',
+                reportName: 'Security Scan Report'
+            ])
+        }
+    }
+}
